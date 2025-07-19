@@ -19,6 +19,8 @@ python-dotenv = ">=1.0.0"
 asyncio = ">=3.4.3"
 djangorestframework = "*"
 drf-nested-routers = "*"
+djoser = "*"
+migrate = "*"
 
 [dev-packages]
 
