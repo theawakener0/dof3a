@@ -1,15 +1,11 @@
 from rest_framework_nested import routers
-from rest_framework import routers
-from .views import *
+from .views import StudentViewSet, PostViewSet, CommentViewSet
 
-student_router = routers.DefaultRouter()
-student_router.register(r'students', StudentViewSet, basename='students')
+router = routers.DefaultRouter()
+router.register(r'students', StudentViewSet, basename='students')
+router.register(r'posts', PostViewSet, basename='posts')
 
-posts_router = routers.DefaultRouter()
-posts_router.register(r'posts', PostViewSet, basename='posts')
+post_router = routers.NestedDefaultRouter(router, r'posts', lookup='post')
+post_router.register(r'comments', CommentViewSet, basename='post-comments')
 
-
-urlpatterns = [
-    
-] + student_router.urls \
-    + posts_router.urls
+urlpatterns = router.urls + post_router.urls
