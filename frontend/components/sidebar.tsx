@@ -78,6 +78,13 @@ export default function Sidebar() {
           <UsersIcon className="w-7 h-7" />
           <span className="font-semibold text-black">Study Group</span>
         </Link>
+        <Link
+          href="/classroom"
+          className="flex items-center gap-4 hover:bg-[#e3edff] rounded-2xl px-4 py-3 transition-colors duration-200 text-xl"
+        >
+          <BuildingLibraryIcon className="w-7 h-7" />
+          <span className="font-semibold text-black">Leaderboards</span>
+        </Link>
       </nav>
     </aside>
   );

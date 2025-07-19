@@ -14,31 +14,31 @@ export default function Home() {
           posterPfp="/user-profile.png"
         />
         <Post
-          posterName="Omar Ashraf"
-          content="hello! I am omar , I am at grade 7"
+          posterName="Aly Ahmed"
+          content="hello! I am Aly , I am at grade 9"
           userName="Ahmed Ashraf"
           posterPfp="/user-profile.png"
         />
         <Post
-          posterName="Omar Ashraf"
-          content="hello! I am omar , I am at grade 7"
+          posterName="sayed youssef"
+          content="hello! I am sayed"
           userName="Ahmed Ashraf"
           posterPfp="/user-profile.png"
         />
         <Post
-          posterName="Omar Ashraf"
-          content="hello! I am omar , I am at grade 7"
+          posterName="Ashraf ahmed"
+          content="hello! I am Ashraf , I am at grade 11"
           userName="Ahmed Ashraf"
           posterPfp="/user-profile.png"
         />
         <Post
-          posterName="Omar Ashraf"
-          content="hello! I am omar , I am at grade 7"
+          posterName="Fady Nassar"
+          content="hello! I am Fady "
           userName="Ahmed Ashraf"
           posterPfp="/user-profile.png"
         />
         <Post
-          posterName="Omar Ashraf"
+          posterName="ellewa"
           content="hello! I am omar , I am at grade 7"
           userName="Ahmed Ashraf"
           posterPfp="/user-profile.png"
