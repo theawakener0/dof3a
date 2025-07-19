@@ -1,0 +1,5 @@
+**/migrations/*.py
+!**/migrations/__init__.py
+**/migrations/*.pyc
+*.sqlite3
+*.db

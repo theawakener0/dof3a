@@ -27,17 +27,36 @@ class Student(models.Model):
     score = models.PositiveIntegerField()
     grade = models.CharField(max_length=50, choices=STUDENT_GRADE, default=OPTION_SELECT)
 
-class Comment(models.Model):
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
-    body = models.TextField()
-    likes = models.PositiveIntegerField()
+# models.py
 
 class Post(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     caption = models.CharField(max_length=200)
     description = models.TextField()
-    likes = models.PositiveIntegerField()
-    comments = models.ForeignKey(Comment, on_delete=models.CASCADE)
+    likes = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return f'{self.caption}, likes ({self.likes})'
+
+class Comment(models.Model):
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
+    body = models.TextField()
+    likes = models.PositiveIntegerField(default=0)
+
+# models.py
+
+class StudyGroup(models.Model):
+    host = models.ForeignKey(User, on_delete=models.CASCADE, related_name='hosted_groups')
+    topic = models.CharField(max_length=100)
+    location = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    scheduled_time = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+
+class StudyGroupInvite(models.Model):
+    group = models.ForeignKey(StudyGroup, on_delete=models.CASCADE, related_name='invites')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='studygroup_invites')
+    accepted = models.BooleanField(default=False)
+    responded = models.BooleanField(default=False)
+    notified = models.BooleanField(default=False)
