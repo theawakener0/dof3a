@@ -2,10 +2,14 @@ from rest_framework_nested import routers
 from rest_framework import routers
 from .views import *
 
-parent_router = routers.DefaultRouter()
-parent_router.register(r'students', StudentViewSet, basename='students')
+student_router = routers.DefaultRouter()
+student_router.register(r'students', StudentViewSet, basename='students')
+
+posts_router = routers.DefaultRouter()
+posts_router.register(r'posts', PostViewSet, basename='posts')
 
 
 urlpatterns = [
     
-] + parent_router.urls
+] + student_router.urls \
+    + posts_router.urls
