@@ -26,3 +26,18 @@ class Student(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     score = models.PositiveIntegerField()
     grade = models.CharField(max_length=50, choices=STUDENT_GRADE, default=OPTION_SELECT)
+
+class Comment(models.Model):
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    body = models.TextField()
+    likes = models.PositiveIntegerField()
+
+class Post(models.Model):
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    caption = models.CharField(max_length=200)
+    description = models.TextField()
+    likes = models.PositiveIntegerField()
+    comments = models.ForeignKey(Comment, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f'{self.caption}, likes ({self.likes})'
