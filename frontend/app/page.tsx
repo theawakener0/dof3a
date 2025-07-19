@@ -1,5 +1,5 @@
-import Post from "@/components/post";
-import Sidebar from "@/components/sidebar";
+import Post from "../components/post";
+import Sidebar from "../components/sidebar";
 
 export default function Home() {
   return (
