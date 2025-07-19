@@ -1,0 +1,26 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+langchain = ">=0.1.0"
+langchain-google-vertexai = ">=0.1.0"
+langchain-core = ">=0.1.0"
+google-cloud-aiplatform = ">=1.40.0"
+google-auth = ">=2.20.0"
+dataclasses-json = ">=0.6.0"
+typing-extensions = ">=4.5.0"
+pytest = ">=7.0.0"
+pytest-asyncio = ">=0.21.0"
+black = ">=23.0.0"
+flake8 = ">=6.0.0"
+python-dotenv = ">=1.0.0"
+asyncio = ">=3.4.3"
+djangorestframework = "*"
+drf-nested-routers = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.13"
