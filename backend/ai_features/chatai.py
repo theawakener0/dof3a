@@ -1,7 +1,7 @@
 from langchain_google_genai import GoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-# import fetchdb
+import fetchdb
 from typing import Dict, Any, Optional, List
 import dotenv
 import json
@@ -99,6 +99,14 @@ def chatmodel(user_input: str, user_id: str, conversation_context: Optional[str]
         
         logger.info(f"Processing chat request for user {user_id}")
         
+        # Fetch user context from database
+        user_context = ""
+        try:
+            user_context = fetchdb.get_user_context(user_id)
+            logger.info(f"Successfully retrieved user context for user {user_id}")
+        except Exception as e:
+            logger.warning(f"Failed to fetch user context for user {user_id}: {e}")
+            user_context = f"User ID: {user_id} (No additional profile data available)"
         
         # Initialize AI model
         try:
@@ -112,7 +120,7 @@ def chatmodel(user_input: str, user_id: str, conversation_context: Optional[str]
                 "timestamp": datetime.now().isoformat()
             }
         
-        # Create enhanced prompt with safety measures
+        # Create enhanced prompt with safety measures and user context
         system_prompt = f"""You are dof3a, an intelligent and supportive AI tutor for Egyptian students. 
         You help with homework, exam preparation, and educational guidance.
 
@@ -121,13 +129,26 @@ def chatmodel(user_input: str, user_id: str, conversation_context: Optional[str]
         - Never generate harmful, inappropriate, or offensive content
         - If asked about non-educational topics, politely redirect to educational matters
         - Respect cultural and religious sensitivities
-        - Always maintain a friendly and professional tone,
+        - Always maintain a friendly and professional tone
+
+        USER PROFILE:
+        {user_context}
         
         CONVERSATION HISTORY:
         {conversation_context or "No previous conversation"}
         
+        PERSONALIZATION INSTRUCTIONS:
+        - Use the user's name when available to make responses more personal
+        - Tailor your responses to their grade level and academic focus
+        - Reference their previous posts or activity when relevant and helpful
+        - Adjust difficulty and examples to match their academic level
+        - If they're a high-performing student, you can provide more challenging content
+        - If they seem to struggle, provide more supportive and foundational explanations
+        - Consider their engagement level when structuring responses
+        
         Provide helpful, accurate, and encouraging educational support. Always respond in a friendly, 
-        professional manner appropriate for students."""
+        professional manner appropriate for students. Use their profile information to give personalized, 
+        relevant assistance."""
 
         prompt = ChatPromptTemplate.from_messages([
             ("system", system_prompt),
@@ -186,7 +207,7 @@ def chatmodel(user_input: str, user_id: str, conversation_context: Optional[str]
             "timestamp": datetime.now().isoformat()
         }
 
-def generate_knockout_questions(subject: str, grade_level: str, difficulty: str = "medium", num_questions: int = 5) -> Dict[str, Any]:
+def generate_knockout_questions(subject: str, grade_level: str, difficulty: str = "medium", num_questions: int = 5, user_id: Optional[int] = None) -> Dict[str, Any]:
     """
     Generate AI-powered questions for 1v1 knockout games
     
@@ -224,6 +245,25 @@ def generate_knockout_questions(subject: str, grade_level: str, difficulty: str 
             num_questions = 5
         
         logger.info(f"Generating {num_questions} {difficulty} questions for {subject} - {grade_level}")
+        
+        # Fetch user context if user_id is provided
+        user_performance_context = ""
+        if user_id:
+            try:
+                user_data = fetchdb.get_comprehensive_data(user_id)
+                if user_data and user_data.get('student_profile'):
+                    student_profile = user_data['student_profile']
+                    user_performance_context = f"""
+                    STUDENT PERFORMANCE CONTEXT:
+                    - Current Score: {student_profile.get('score', 0)} points
+                    - Grade Level: {student_profile.get('grade', grade_level)}
+                    - Platform Engagement: {'High' if len(user_data.get('posts', [])) + len(user_data.get('comments', [])) > 5 else 'Moderate' if len(user_data.get('posts', [])) + len(user_data.get('comments', [])) > 2 else 'Low'}
+                    
+                    Adjust question difficulty and style based on this student's performance level.
+                    """
+                    logger.info(f"Using student performance data for user {user_id}")
+            except Exception as e:
+                logger.warning(f"Failed to fetch user context for question generation: {e}")
     
         # Define Egyptian curriculum-specific topics
         curriculum_topics = {
@@ -284,15 +324,17 @@ def generate_knockout_questions(subject: str, grade_level: str, difficulty: str 
         - Questions should be clear and unambiguous
         - Avoid culturally sensitive content
         
+        {user_performance_context}
+        
         Return ONLY a JSON array with this exact format:
         [
-            {{{{
+            {{
                 "question": "Question text here?",
                 "options": ["A. Option 1", "B. Option 2", "C. Option 3", "D. Option 4"],
                 "correct_answer": "A",
                 "topic": "Topic name",
                 "explanation": "Brief explanation of the correct answer"
-            }}}}
+            }}
         ]
         
         Generate exactly {num_questions} questions."""
@@ -396,21 +438,166 @@ def generate_knockout_questions(subject: str, grade_level: str, difficulty: str 
             "timestamp": datetime.now().isoformat()
         }
 
+def generate_study_recommendations(user_id: int, subject: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Generate personalized study recommendations based on user's profile and activity
+    
+    Args:
+        user_id: User ID
+        subject: Optional specific subject to focus on
+        
+    Returns:
+        Dict containing personalized study recommendations
+    """
+    try:
+        user_id = _validate_user_id(user_id)
+        
+        # Fetch comprehensive user data
+        try:
+            user_data = fetchdb.get_comprehensive_data(user_id)
+            user_context = fetchdb.get_user_context(user_id)
+        except Exception as e:
+            logger.error(f"Failed to fetch user data for recommendations: {e}")
+            return {
+                "recommendations": ["Focus on reviewing your recent coursework", "Practice problem-solving regularly"],
+                "status": "error",
+                "error": "Unable to fetch user profile",
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        if not user_data or not user_data.get('user_profile'):
+            return {
+                "recommendations": ["Create a study schedule", "Focus on consistent daily practice"],
+                "status": "error", 
+                "error": "User profile not found",
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        # Initialize AI model
+        try:
+            llm = get_chat_model()
+        except Exception as e:
+            logger.error(f"AI model initialization failed: {e}")
+            return {
+                "recommendations": ["Review your textbooks regularly", "Ask teachers for help when needed"],
+                "status": "error",
+                "error": "AI service unavailable",
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        # Create AI prompt for study recommendations
+        subject_focus = f"Focus specifically on {subject}." if subject else "Cover all relevant subjects for their grade level."
+        
+        system_prompt = f"""You are an educational advisor for Egyptian students. Based on the student's profile and activity, 
+        generate personalized study recommendations.
+
+        STUDENT PROFILE:
+        {user_context}
+        
+        INSTRUCTIONS:
+        - {subject_focus}
+        - Provide 5-8 specific, actionable study recommendations
+        - Consider their grade level and current performance
+        - Include both study techniques and content suggestions
+        - Be encouraging but realistic
+        - Tailor recommendations to Egyptian curriculum
+        - Consider their engagement level and suggest improvements if needed
+        
+        Return ONLY a JSON object with this format:
+        {{
+            "recommendations": [
+                "Specific recommendation 1",
+                "Specific recommendation 2",
+                "etc..."
+            ],
+            "focus_areas": ["Area 1", "Area 2", "Area 3"],
+            "study_tips": ["Tip 1", "Tip 2", "Tip 3"],
+            "motivation_message": "Encouraging message for the student"
+        }}"""
+        
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("human", "Generate personalized study recommendations for this student.")
+        ])
+        
+        chain = prompt | llm | StrOutputParser()
+        
+        try:
+            response = chain.invoke({})
+            
+            # Parse JSON response
+            try:
+                recommendations_data = json.loads(response)
+                
+                logger.info(f"Successfully generated study recommendations for user {user_id}")
+                
+                return {
+                    "recommendations": recommendations_data.get("recommendations", []),
+                    "focus_areas": recommendations_data.get("focus_areas", []),
+                    "study_tips": recommendations_data.get("study_tips", []),
+                    "motivation_message": recommendations_data.get("motivation_message", "Keep up the great work!"),
+                    "status": "success",
+                    "user_id": user_id,
+                    "subject_focus": subject,
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse recommendations response: {e}")
+                return {
+                    "recommendations": ["Review your coursework regularly", "Practice consistently", "Ask for help when needed"],
+                    "status": "error",
+                    "error": "Response parsing failed",
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+        except Exception as e:
+            logger.error(f"AI recommendation generation failed: {e}")
+            return {
+                "recommendations": ["Study consistently", "Review challenging topics", "Seek help from teachers"],
+                "status": "error",
+                "error": "Recommendation generation failed",
+                "timestamp": datetime.now().isoformat()
+            }
+    
+    except ValueError as e:
+        logger.error(f"Validation error in generate_study_recommendations: {e}")
+        return {
+            "recommendations": [],
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Unexpected error in generate_study_recommendations: {e}")
+        return {
+            "recommendations": [],
+            "status": "error",
+            "error": "Unexpected system error",
+            "timestamp": datetime.now().isoformat()
+        }
+
 # Test function
 def test_ai_features():
     """Test AI features with basic functionality"""
     logger.info("Testing AI features...")
     
     try:
-        # Test chat functionality
+        # Test chat functionality with user context
         chat_response = chatmodel("Hello, can you help me with math?", "1")
         logger.info(f"Chat test: {chat_response['status']}")
         
-        # Test knockout questions
-        questions_response = generate_knockout_questions("Math", "Middle 1", "easy", 3)
+        # Test knockout questions with user context
+        questions_response = generate_knockout_questions("Math", "Middle 3", "easy", 3, user_id=1)
         logger.info(f"Questions test: {questions_response['status']}")
         if questions_response['status'] == 'success':
             logger.info(f"Generated {len(questions_response['questions'])} questions")
+        
+        # Test study recommendations
+        recommendations_response = generate_study_recommendations(1, "Math")
+        logger.info(f"Recommendations test: {recommendations_response['status']}")
+        if recommendations_response['status'] == 'success':
+            logger.info(f"Generated {len(recommendations_response['recommendations'])} recommendations")
         
         logger.info("✅ AI features tested successfully")
         
