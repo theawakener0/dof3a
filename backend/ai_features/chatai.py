@@ -225,22 +225,159 @@ def generate_knockout_questions(subject: str, grade_level: str, difficulty: str 
         
         logger.info(f"Generating {num_questions} {difficulty} questions for {subject} - {grade_level}")
     
-        # Use fallback question generation for now
-        questions = _generate_fallback_questions(subject, grade_level, difficulty, num_questions)
+        # Define Egyptian curriculum-specific topics
+        curriculum_topics = {
+            "Middle 1": {
+                "Math": ["Integers", "Fractions", "Decimals", "Basic Algebra", "Geometry Basics"],
+                "Science": ["Matter States", "Simple Machines", "Plant Biology", "Solar System"],
+                "Arabic": ["Grammar Basics", "Reading Comprehension", "Poetry", "Composition"],
+                "English": ["Present Tense", "Vocabulary", "Reading", "Basic Writing"]
+            },
+            "Middle 2": {
+                "Math": ["Algebra", "Geometry", "Statistics", "Equations", "Functions"],
+                "Science": ["Chemistry Basics", "Physics Introduction", "Biology Systems"],
+                "Arabic": ["Advanced Grammar", "Literature", "Writing Skills"],
+                "English": ["Past Tenses", "Conditionals", "Advanced Vocabulary"]
+            },
+            "Middle 3": {
+                "Math": ["Advanced Algebra", "Geometry", "Probability", "Functions"],
+                "Science": ["Chemical Reactions", "Forces and Motion", "Genetics Basics"],
+                "Arabic": ["Poetry Analysis", "Essay Writing", "Classical Literature"],
+                "English": ["Complex Grammar", "Academic Writing", "Literature Analysis"]
+            },
+            "Senior 1": {
+                "Math": ["Calculus Basics", "Trigonometry", "Statistics", "Logarithms"],
+                "Physics": ["Mechanics", "Heat", "Sound", "Light"],
+                "Chemistry": ["Atomic Structure", "Chemical Bonding", "Acids and Bases"],
+                "Biology": ["Cell Biology", "Genetics", "Evolution"]
+            },
+            "Senior 2": {
+                "Math": ["Advanced Calculus", "Complex Numbers", "Matrices"],
+                "Physics": ["Electricity", "Magnetism", "Waves", "Modern Physics"],
+                "Chemistry": ["Organic Chemistry", "Chemical Equilibrium", "Thermodynamics"],
+                "Biology": ["Human Biology", "Ecology", "Molecular Biology"]
+            },
+            "Senior 3": {
+                "Math": ["University Prep Calculus", "Statistics", "Discrete Math"],
+                "Physics": ["Quantum Physics", "Relativity", "Nuclear Physics"],
+                "Chemistry": ["Advanced Organic", "Physical Chemistry", "Biochemistry"],
+                "Biology": ["Advanced Genetics", "Biotechnology", "Environmental Science"]
+            }
+        }
         
-        if questions:
-            logger.info(f"Successfully generated {len(questions)} questions using fallback method")
+        # Get relevant topics
+        topics = curriculum_topics.get(grade_level, {}).get(subject, ["General concepts"])
+        selected_topics = random.sample(topics, min(len(topics), 3))
+        
+        # Create AI prompt for question generation
+        system_prompt = f"""You are an educational content generator for Egyptian students. 
+        Generate {num_questions} multiple choice questions for a 1v1 knockout game.
+        
+        REQUIREMENTS:
+        - Subject: {subject}
+        - Grade Level: {grade_level}
+        - Difficulty: {difficulty}
+        - Topics to focus on: {', '.join(selected_topics)}
+        - Questions should be appropriate for Egyptian curriculum
+        - Each question must have exactly 4 options (A, B, C, D)
+        - Only one correct answer per question
+        - Questions should be clear and unambiguous
+        - Avoid culturally sensitive content
+        
+        Return ONLY a JSON array with this exact format:
+        [
+            {{{{
+                "question": "Question text here?",
+                "options": ["A. Option 1", "B. Option 2", "C. Option 3", "D. Option 4"],
+                "correct_answer": "A",
+                "topic": "Topic name",
+                "explanation": "Brief explanation of the correct answer"
+            }}}}
+        ]
+        
+        Generate exactly {num_questions} questions."""
+        
+        # Initialize AI model
+        try:
+            llm = get_chat_model()
+        except Exception as e:
+            logger.error(f"AI model initialization failed: {e}")
             return {
-                "questions": questions,
-                "status": "success",
-                "total_questions": len(questions),
-                "subject": subject,
-                "grade_level": grade_level,
-                "difficulty": difficulty,
+                "questions": [],
+                "status": "error",
+                "error": "AI service unavailable",
                 "timestamp": datetime.now().isoformat()
             }
-        else:
-            raise ValueError("No questions could be generated")
+        
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("human", "Generate the questions now.")
+        ])
+        
+        chain = prompt | llm | StrOutputParser()
+        
+        try:
+            response = chain.invoke({})
+            
+            # Try to parse JSON response
+            try:
+                questions_data = json.loads(response)
+                
+                # Validate questions structure
+                if not isinstance(questions_data, list):
+                    raise ValueError("Response is not a list")
+                
+                validated_questions = []
+                for i, q in enumerate(questions_data):
+                    if not isinstance(q, dict):
+                        continue
+                    
+                    required_fields = ["question", "options", "correct_answer", "topic", "explanation"]
+                    if not all(field in q for field in required_fields):
+                        continue
+                    
+                    if len(q["options"]) != 4:
+                        continue
+                    
+                    validated_questions.append({
+                        "id": i + 1,
+                        "question": str(q["question"]).strip(),
+                        "options": [str(opt).strip() for opt in q["options"]],
+                        "correct_answer": str(q["correct_answer"]).strip().upper(),
+                        "topic": str(q["topic"]).strip(),
+                        "explanation": str(q["explanation"]).strip(),
+                        "difficulty": difficulty,
+                        "subject": subject
+                    })
+                
+                if not validated_questions:
+                    raise ValueError("No valid questions generated")
+                
+                logger.info(f"Successfully generated {len(validated_questions)} questions")
+                
+                return {
+                    "questions": validated_questions,
+                    "status": "success",
+                    "total_questions": len(validated_questions),
+                    "subject": subject,
+                    "grade_level": grade_level,
+                    "difficulty": difficulty,
+                    "topics_covered": selected_topics,
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse AI response as JSON: {e}")
+                raise Exception("AI response format error")
+            
+        except Exception as e:
+            logger.error(f"AI question generation failed: {e}")
+            return {
+                "questions": [],
+                "status": "error",
+                "error": f"Question generation failed: {e}",
+                "timestamp": datetime.now().isoformat()
+            }
     
     except ValueError as e:
         logger.error(f"Validation error in generate_knockout_questions: {e}")
@@ -258,131 +395,6 @@ def generate_knockout_questions(subject: str, grade_level: str, difficulty: str 
             "error": "Unexpected system error",
             "timestamp": datetime.now().isoformat()
         }
-
-def _generate_fallback_questions(subject: str, grade_level: str, difficulty: str, num_questions: int) -> List[Dict[str, Any]]:
-    """Generate fallback questions when AI generation fails"""
-    
-    # Sample questions bank organized by subject and grade
-    question_bank = {
-        "Math": {
-            "Middle 1": {
-                "easy": [
-                    {
-                        "question": "What is 15 + 27?",
-                        "options": ["A. 42", "B. 41", "C. 43", "D. 44"],
-                        "correct_answer": "A",
-                        "topic": "Addition",
-                        "explanation": "15 + 27 = 42"
-                    },
-                    {
-                        "question": "What is 8 × 6?",
-                        "options": ["A. 46", "B. 48", "C. 50", "D. 52"],
-                        "correct_answer": "B",
-                        "topic": "Multiplication",
-                        "explanation": "8 × 6 = 48"
-                    },
-                    {
-                        "question": "What is 1/2 + 1/4?",
-                        "options": ["A. 1/6", "B. 2/6", "C. 3/4", "D. 1/3"],
-                        "correct_answer": "C",
-                        "topic": "Fractions",
-                        "explanation": "1/2 + 1/4 = 2/4 + 1/4 = 3/4"
-                    },
-                    {
-                        "question": "What is the value of x in: x + 5 = 12?",
-                        "options": ["A. 6", "B. 7", "C. 8", "D. 9"],
-                        "correct_answer": "B",
-                        "topic": "Basic Algebra",
-                        "explanation": "x + 5 = 12, so x = 12 - 5 = 7"
-                    }
-                ]
-            },
-            "Middle 2": {
-                "easy": [
-                    {
-                        "question": "What is 2x + 3 = 11, solve for x?",
-                        "options": ["A. 3", "B. 4", "C. 5", "D. 6"],
-                        "correct_answer": "B",
-                        "topic": "Algebra",
-                        "explanation": "2x + 3 = 11, 2x = 8, x = 4"
-                    },
-                    {
-                        "question": "What is the area of a rectangle with length 8cm and width 5cm?",
-                        "options": ["A. 40 cm²", "B. 35 cm²", "C. 45 cm²", "D. 30 cm²"],
-                        "correct_answer": "A",
-                        "topic": "Geometry",
-                        "explanation": "Area = length × width = 8 × 5 = 40 cm²"
-                    }
-                ]
-            }
-        },
-        "Science": {
-            "Middle 1": {
-                "easy": [
-                    {
-                        "question": "What are the three states of matter?",
-                        "options": ["A. Solid, Liquid, Gas", "B. Hot, Cold, Warm", "C. Big, Small, Medium", "D. Fast, Slow, Still"],
-                        "correct_answer": "A",
-                        "topic": "States of Matter",
-                        "explanation": "The three main states of matter are solid, liquid, and gas"
-                    },
-                    {
-                        "question": "Which planet is closest to the Sun?",
-                        "options": ["A. Venus", "B. Earth", "C. Mercury", "D. Mars"],
-                        "correct_answer": "C",
-                        "topic": "Solar System",
-                        "explanation": "Mercury is the planet closest to the Sun"
-                    }
-                ]
-            }
-        },
-        "English": {
-            "Middle 1": {
-                "easy": [
-                    {
-                        "question": "What is the past tense of 'go'?",
-                        "options": ["A. goes", "B. went", "C. going", "D. gone"],
-                        "correct_answer": "B",
-                        "topic": "Past Tense",
-                        "explanation": "The past tense of 'go' is 'went'"
-                    }
-                ]
-            }
-        }
-    }
-    
-    # Get questions for the specific subject and grade
-    subject_questions = question_bank.get(subject, {})
-    grade_questions = subject_questions.get(grade_level, {})
-    difficulty_questions = grade_questions.get(difficulty, [])
-    
-    # If no specific questions found, use Math Middle 1 easy as default
-    if not difficulty_questions:
-        difficulty_questions = question_bank["Math"]["Middle 1"]["easy"]
-    
-    # Select random questions
-    available_questions = list(difficulty_questions)
-    selected_questions = []
-    
-    for i in range(min(num_questions, len(available_questions))):
-        if available_questions:
-            question = random.choice(available_questions)
-            available_questions.remove(question)
-            
-            # Add ID and metadata
-            question_with_metadata = {
-                "id": i + 1,
-                "question": question["question"],
-                "options": question["options"],
-                "correct_answer": question["correct_answer"],
-                "topic": question["topic"],
-                "explanation": question["explanation"],
-                "difficulty": difficulty,
-                "subject": subject
-            }
-            selected_questions.append(question_with_metadata)
-    
-    return selected_questions
 
 # Test function
 def test_ai_features():
