@@ -1,9 +1,14 @@
 import mimetypes
+import sys
 from pathlib import Path
 from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+# Add ai_features to Python path
+AI_FEATURES_DIR = BASE_DIR.parent
+sys.path.append(str(AI_FEATURES_DIR))
 
 # Application definition
 
@@ -15,11 +20,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'debug_toolbar',
     'djoser',
     'core',
     'dof3a_base',
+    'ai_features',
 ]
+
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -29,8 +36,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware'
 ]
+
+
 
 ROOT_URLCONF = 'dof3a.urls'
 
