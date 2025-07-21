@@ -42,9 +42,11 @@ class Comment(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
     body = models.TextField()
-    likes = models.PositiveIntegerField(default=0)
+    liked_by = models.ManyToManyField(User, related_name='liked_comments', blank=True)
 
-# models.py
+    @property
+    def likes(self):
+        return self.liked_by.count()
 
 class StudyGroup(models.Model):
     host = models.ForeignKey(User, on_delete=models.CASCADE, related_name='hosted_groups')
