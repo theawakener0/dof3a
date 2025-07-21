@@ -1,9 +1,10 @@
 from langchain_google_genai import GoogleGenerativeAI
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 import fetchdb
 from typing import Dict, Any, Optional, List
 import dotenv
+import os
 import json
 import logging
 import re
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Load environment variables
 dotenv.load_dotenv()
-API_KEY = dotenv.get_key(".env", "GOOGLE_API_KEY") or "AIzaSyBaehWDyGXoFCqVexZxAov9DAGJvpWa5kQ"
+API_KEY = os.getenv("GOOGLE_API_KEY") or "demo_key_for_testing"
 
 def _validate_api_key() -> bool:
     """Validate Google API key is available"""
@@ -62,7 +63,7 @@ def get_chat_model():
             raise ValueError("Google API key is not configured properly")
         
         return GoogleGenerativeAI(
-            model="gemini-1.5-flash",
+            model="gemini-2.0-flash",
             google_api_key=API_KEY,
             temperature=0.5
         )
@@ -148,19 +149,23 @@ def chatmodel(user_input: str, user_id: str, conversation_context: Optional[str]
         
         Provide helpful, accurate, and encouraging educational support. Always respond in a friendly, 
         professional manner appropriate for students. Use their profile information to give personalized, 
-        relevant assistance."""
+        relevant assistance.
+        
+        Student Question: {user_input}
+        
+        Your Response:"""
 
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", system_prompt),
-            ("human", "{input}")
-        ])
+        prompt = PromptTemplate(
+            input_variables=[],
+            template=system_prompt
+        )
         
         # Create processing chain
         chain = prompt | llm | StrOutputParser()
         
         # Process with timeout and error handling
         try:
-            response = chain.invoke({"input": user_input})
+            response = chain.invoke({})
             
             if not response or len(response.strip()) == 0:
                 raise Exception("AI model returned empty response")
@@ -310,34 +315,35 @@ def generate_knockout_questions(subject: str, grade_level: str, difficulty: str 
         selected_topics = random.sample(topics, min(len(topics), 3))
         
         # Create AI prompt for question generation
-        system_prompt = f"""You are an educational content generator for Egyptian students. 
-        Generate {num_questions} multiple choice questions for a 1v1 knockout game.
+        base_prompt = f"""You are an educational content generator for Egyptian students. 
+Generate {num_questions} multiple choice questions for a 1v1 knockout game.
+
+REQUIREMENTS:
+- Subject: {subject}
+- Grade Level: {grade_level}
+- Difficulty: {difficulty}
+- Topics to focus on: {', '.join(selected_topics)}
+- Questions should be appropriate for Egyptian curriculum
+- Each question must have exactly 4 options (A, B, C, D)
+- Only one correct answer per question
+- Questions should be clear and unambiguous
+- Avoid culturally sensitive content
+
+{user_performance_context}
+
+Return ONLY a JSON array with this exact format (no extra text):"""
         
-        REQUIREMENTS:
-        - Subject: {subject}
-        - Grade Level: {grade_level}
-        - Difficulty: {difficulty}
-        - Topics to focus on: {', '.join(selected_topics)}
-        - Questions should be appropriate for Egyptian curriculum
-        - Each question must have exactly 4 options (A, B, C, D)
-        - Only one correct answer per question
-        - Questions should be clear and unambiguous
-        - Avoid culturally sensitive content
+        json_example = '''[
+  {{
+    "question": "Question text here?",
+    "options": ["A. Option 1", "B. Option 2", "C. Option 3", "D. Option 4"],
+    "correct_answer": "A",
+    "topic": "Topic name",
+    "explanation": "Brief explanation of the correct answer"
+  }}
+]'''
         
-        {user_performance_context}
-        
-        Return ONLY a JSON array with this exact format:
-        [
-            {{
-                "question": "Question text here?",
-                "options": ["A. Option 1", "B. Option 2", "C. Option 3", "D. Option 4"],
-                "correct_answer": "A",
-                "topic": "Topic name",
-                "explanation": "Brief explanation of the correct answer"
-            }}
-        ]
-        
-        Generate exactly {num_questions} questions."""
+        system_prompt = base_prompt + "\n" + json_example + f"\n\nGenerate exactly {num_questions} questions."
         
         # Initialize AI model
         try:
@@ -351,19 +357,54 @@ def generate_knockout_questions(subject: str, grade_level: str, difficulty: str 
                 "timestamp": datetime.now().isoformat()
             }
         
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", system_prompt),
-            ("human", "Generate the questions now.")
-        ])
+        prompt = PromptTemplate(
+            input_variables=[],
+            template=system_prompt
+        )
         
         chain = prompt | llm | StrOutputParser()
         
         try:
             response = chain.invoke({})
             
+            # Check if response is empty
+            if not response or not response.strip():
+                logger.warning("AI model returned empty response, using fallback")
+                return {
+                    "questions": [],
+                    "status": "error",
+                    "error": "Empty response from AI model",
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            logger.info(f"Raw AI response (first 200 chars): {response[:200]}...")
+            
+            # Clean the response - remove markdown code blocks and extra text
+            cleaned_response = response.strip()
+            
+            # Remove markdown code blocks if present
+            if "```json" in cleaned_response:
+                start = cleaned_response.find("```json") + 7
+                end = cleaned_response.find("```", start)
+                if end != -1:
+                    cleaned_response = cleaned_response[start:end].strip()
+            elif "```" in cleaned_response:
+                start = cleaned_response.find("```") + 3
+                end = cleaned_response.find("```", start)
+                if end != -1:
+                    cleaned_response = cleaned_response[start:end].strip()
+            
+            # Try to extract JSON array using regex - look for complete array structure
+            if not cleaned_response.startswith('['):
+                json_match = re.search(r'\[.*\]', cleaned_response, re.DOTALL)
+                if json_match:
+                    cleaned_response = json_match.group()
+            
+            logger.info(f"Cleaned response for parsing: {cleaned_response[:300]}...")
+            
             # Try to parse JSON response
             try:
-                questions_data = json.loads(response)
+                questions_data = json.loads(cleaned_response)
                 
                 # Validate questions structure
                 if not isinstance(questions_data, list):
@@ -372,20 +413,30 @@ def generate_knockout_questions(subject: str, grade_level: str, difficulty: str 
                 validated_questions = []
                 for i, q in enumerate(questions_data):
                     if not isinstance(q, dict):
+                        logger.warning(f"Question {i+1} is not a dictionary, skipping")
                         continue
                     
                     required_fields = ["question", "options", "correct_answer", "topic", "explanation"]
-                    if not all(field in q for field in required_fields):
+                    missing_fields = [field for field in required_fields if field not in q]
+                    if missing_fields:
+                        logger.warning(f"Question {i+1} missing fields: {missing_fields}, skipping")
                         continue
                     
-                    if len(q["options"]) != 4:
+                    if not isinstance(q["options"], list) or len(q["options"]) != 4:
+                        logger.warning(f"Question {i+1} has invalid options format, skipping")
+                        continue
+                    
+                    # Validate correct_answer format
+                    correct_answer = str(q["correct_answer"]).strip().upper()
+                    if correct_answer not in ["A", "B", "C", "D"]:
+                        logger.warning(f"Question {i+1} has invalid correct_answer: {correct_answer}, skipping")
                         continue
                     
                     validated_questions.append({
                         "id": i + 1,
                         "question": str(q["question"]).strip(),
                         "options": [str(opt).strip() for opt in q["options"]],
-                        "correct_answer": str(q["correct_answer"]).strip().upper(),
+                        "correct_answer": correct_answer,
                         "topic": str(q["topic"]).strip(),
                         "explanation": str(q["explanation"]).strip(),
                         "difficulty": difficulty,
@@ -393,7 +444,7 @@ def generate_knockout_questions(subject: str, grade_level: str, difficulty: str 
                     })
                 
                 if not validated_questions:
-                    raise ValueError("No valid questions generated")
+                    raise ValueError("No valid questions generated after validation")
                 
                 logger.info(f"Successfully generated {len(validated_questions)} questions")
                 
@@ -410,7 +461,95 @@ def generate_knockout_questions(subject: str, grade_level: str, difficulty: str 
                 
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse AI response as JSON: {e}")
-                raise Exception("AI response format error")
+                logger.error(f"Cleaned response that failed to parse: {cleaned_response}")
+                
+                # Try to fix incomplete JSON by adding missing closing brackets
+                try:
+                    # Count opening and closing brackets
+                    open_brackets = cleaned_response.count('[')
+                    close_brackets = cleaned_response.count(']')
+                    open_braces = cleaned_response.count('{')
+                    close_braces = cleaned_response.count('}')
+                    
+                    fixed_response = cleaned_response
+                    
+                    # Add missing closing braces for objects
+                    if open_braces > close_braces:
+                        missing_braces = open_braces - close_braces
+                        fixed_response += '}' * missing_braces
+                        logger.info(f"Added {missing_braces} missing closing braces")
+                    
+                    # Add missing closing brackets for arrays
+                    if open_brackets > close_brackets:
+                        missing_brackets = open_brackets - close_brackets
+                        fixed_response += ']' * missing_brackets
+                        logger.info(f"Added {missing_brackets} missing closing brackets")
+                    
+                    # Try parsing the fixed response
+                    questions_data = json.loads(fixed_response)
+                    logger.info("Successfully parsed JSON after fixing brackets")
+                    
+                    # Validate questions structure (same validation as above)
+                    if not isinstance(questions_data, list):
+                        raise ValueError("Response is not a list")
+                    
+                    validated_questions = []
+                    for i, q in enumerate(questions_data):
+                        if not isinstance(q, dict):
+                            logger.warning(f"Question {i+1} is not a dictionary, skipping")
+                            continue
+                        
+                        required_fields = ["question", "options", "correct_answer", "topic", "explanation"]
+                        missing_fields = [field for field in required_fields if field not in q]
+                        if missing_fields:
+                            logger.warning(f"Question {i+1} missing fields: {missing_fields}, skipping")
+                            continue
+                        
+                        if not isinstance(q["options"], list) or len(q["options"]) != 4:
+                            logger.warning(f"Question {i+1} has invalid options format, skipping")
+                            continue
+                        
+                        # Validate correct_answer format
+                        correct_answer = str(q["correct_answer"]).strip().upper()
+                        if correct_answer not in ["A", "B", "C", "D"]:
+                            logger.warning(f"Question {i+1} has invalid correct_answer: {correct_answer}, skipping")
+                            continue
+                        
+                        validated_questions.append({
+                            "id": i + 1,
+                            "question": str(q["question"]).strip(),
+                            "options": [str(opt).strip() for opt in q["options"]],
+                            "correct_answer": correct_answer,
+                            "topic": str(q["topic"]).strip(),
+                            "explanation": str(q["explanation"]).strip(),
+                            "difficulty": difficulty,
+                            "subject": subject
+                        })
+                    
+                    if validated_questions:
+                        logger.info(f"Successfully recovered {len(validated_questions)} questions after fixing JSON")
+                        return {
+                            "questions": validated_questions,
+                            "status": "success",
+                            "total_questions": len(validated_questions),
+                            "subject": subject,
+                            "grade_level": grade_level,
+                            "difficulty": difficulty,
+                            "topics_covered": selected_topics,
+                            "note": "Recovered from incomplete JSON response",
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    else:
+                        raise ValueError("No valid questions after fixing JSON")
+                        
+                except Exception as fix_error:
+                    logger.error(f"Failed to fix JSON: {fix_error}")
+                    return {
+                        "questions": [],
+                        "status": "error",
+                        "error": "Failed to parse AI response as JSON",
+                        "timestamp": datetime.now().isoformat()
+                    }
             
         except Exception as e:
             logger.error(f"AI question generation failed: {e}")
@@ -488,46 +627,84 @@ def generate_study_recommendations(user_id: int, subject: Optional[str] = None) 
         # Create AI prompt for study recommendations
         subject_focus = f"Focus specifically on {subject}." if subject else "Cover all relevant subjects for their grade level."
         
-        system_prompt = f"""You are an educational advisor for Egyptian students. Based on the student's profile and activity, 
-        generate personalized study recommendations.
+        base_prompt = f"""You are an educational advisor for Egyptian students. Based on the student's profile and activity, 
+generate personalized study recommendations.
 
-        STUDENT PROFILE:
-        {user_context}
+STUDENT PROFILE:
+{user_context}
+
+INSTRUCTIONS:
+- {subject_focus}
+- Provide 5-8 specific, actionable study recommendations
+- Consider their grade level and current performance
+- Include both study techniques and content suggestions
+- Be encouraging but realistic
+- Tailor recommendations to Egyptian curriculum
+- Consider their engagement level and suggest improvements if needed
+
+Return ONLY a JSON object with this format (no extra text):"""
         
-        INSTRUCTIONS:
-        - {subject_focus}
-        - Provide 5-8 specific, actionable study recommendations
-        - Consider their grade level and current performance
-        - Include both study techniques and content suggestions
-        - Be encouraging but realistic
-        - Tailor recommendations to Egyptian curriculum
-        - Consider their engagement level and suggest improvements if needed
+        json_example = '''{{
+  "recommendations": [
+    "Specific recommendation 1",
+    "Specific recommendation 2",
+    "etc..."
+  ],
+  "focus_areas": ["Area 1", "Area 2", "Area 3"],
+  "study_tips": ["Tip 1", "Tip 2", "Tip 3"],
+  "motivation_message": "Encouraging message for the student"
+}}'''
         
-        Return ONLY a JSON object with this format:
-        {{
-            "recommendations": [
-                "Specific recommendation 1",
-                "Specific recommendation 2",
-                "etc..."
-            ],
-            "focus_areas": ["Area 1", "Area 2", "Area 3"],
-            "study_tips": ["Tip 1", "Tip 2", "Tip 3"],
-            "motivation_message": "Encouraging message for the student"
-        }}"""
+        system_prompt = base_prompt + "\n" + json_example
         
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", system_prompt),
-            ("human", "Generate personalized study recommendations for this student.")
-        ])
+        prompt = PromptTemplate(
+            input_variables=[],
+            template=system_prompt
+        )
         
         chain = prompt | llm | StrOutputParser()
         
         try:
             response = chain.invoke({})
             
+            # Check if response is empty
+            if not response or not response.strip():
+                logger.warning("AI model returned empty response for recommendations")
+                return {
+                    "recommendations": [],
+                    "status": "error",
+                    "error": "Empty response from AI model",
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            logger.info(f"Raw AI response (first 200 chars): {response[:200]}...")
+            
+            # Clean the response - remove markdown code blocks and extra text
+            cleaned_response = response.strip()
+            
+            # Remove markdown code blocks if present
+            if "```json" in cleaned_response:
+                start = cleaned_response.find("```json") + 7
+                end = cleaned_response.find("```", start)
+                if end != -1:
+                    cleaned_response = cleaned_response[start:end].strip()
+            elif "```" in cleaned_response:
+                start = cleaned_response.find("```") + 3
+                end = cleaned_response.find("```", start)
+                if end != -1:
+                    cleaned_response = cleaned_response[start:end].strip()
+            
+            # Try to extract JSON object using regex - look for complete object structure
+            if not cleaned_response.startswith('{'):
+                json_match = re.search(r'\{.*\}', cleaned_response, re.DOTALL)
+                if json_match:
+                    cleaned_response = json_match.group()
+            
+            logger.info(f"Cleaned response for parsing: {cleaned_response[:300]}...")
+            
             # Parse JSON response
             try:
-                recommendations_data = json.loads(response)
+                recommendations_data = json.loads(cleaned_response)
                 
                 logger.info(f"Successfully generated study recommendations for user {user_id}")
                 
@@ -544,12 +721,54 @@ def generate_study_recommendations(user_id: int, subject: Optional[str] = None) 
                 
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse recommendations response: {e}")
-                return {
-                    "recommendations": ["Review your coursework regularly", "Practice consistently", "Ask for help when needed"],
-                    "status": "error",
-                    "error": "Response parsing failed",
-                    "timestamp": datetime.now().isoformat()
-                }
+                logger.error(f"Cleaned response that failed to parse: {cleaned_response}")
+                
+                # Try to fix incomplete JSON by adding missing closing brackets
+                try:
+                    # Count opening and closing brackets
+                    open_braces = cleaned_response.count('{')
+                    close_braces = cleaned_response.count('}')
+                    open_brackets = cleaned_response.count('[')
+                    close_brackets = cleaned_response.count(']')
+                    
+                    fixed_response = cleaned_response
+                    
+                    # Add missing closing brackets for arrays
+                    if open_brackets > close_brackets:
+                        missing_brackets = open_brackets - close_brackets
+                        fixed_response += ']' * missing_brackets
+                        logger.info(f"Added {missing_brackets} missing closing brackets")
+                    
+                    # Add missing closing braces for objects
+                    if open_braces > close_braces:
+                        missing_braces = open_braces - close_braces
+                        fixed_response += '}' * missing_braces
+                        logger.info(f"Added {missing_braces} missing closing braces")
+                    
+                    # Try parsing the fixed response
+                    recommendations_data = json.loads(fixed_response)
+                    logger.info("Successfully parsed JSON after fixing brackets")
+                    
+                    return {
+                        "recommendations": recommendations_data.get("recommendations", []),
+                        "focus_areas": recommendations_data.get("focus_areas", []),
+                        "study_tips": recommendations_data.get("study_tips", []),
+                        "motivation_message": recommendations_data.get("motivation_message", "Keep up the great work!"),
+                        "status": "success",
+                        "user_id": user_id,
+                        "subject_focus": subject,
+                        "note": "Recovered from incomplete JSON response",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                        
+                except Exception as fix_error:
+                    logger.error(f"Failed to fix JSON: {fix_error}")
+                    return {
+                        "recommendations": [],
+                        "status": "error",
+                        "error": "Failed to parse AI response as JSON",
+                        "timestamp": datetime.now().isoformat()
+                    }
                 
         except Exception as e:
             logger.error(f"AI recommendation generation failed: {e}")

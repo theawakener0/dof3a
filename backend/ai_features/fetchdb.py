@@ -2,6 +2,7 @@ import os
 import sys
 import django
 import logging
+import types
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, asdict
@@ -312,7 +313,8 @@ class DatabaseFetcher:
             user_id = self._validate_user_id(user_id)
             limit = self._validate_limit(limit)
             
-            comments_qs = Comment.objects.filter(author_id=user_id).select_related('author').order_by('-id')[:limit]
+            # Prefetch liked_by to efficiently access the likes property
+            comments_qs = Comment.objects.filter(author_id=user_id).select_related('author').prefetch_related('liked_by').order_by('-id')[:limit]
             
             comments = []
             for comment in comments_qs:
@@ -321,7 +323,7 @@ class DatabaseFetcher:
                     author_id=comment.author.id,
                     author_username=self._sanitize_string(comment.author.username),
                     body=self._sanitize_string(comment.body),
-                    likes=max(0, int(comment.likes) if comment.likes is not None else 0)
+                    likes=max(0, comment.likes)  # comment.likes is a property that returns liked_by.count()
                 )
                 comments.append(comment_data)
             
@@ -697,7 +699,7 @@ def fetch_comment_data(post_id=None, author_username=None):
     if post_id:
         try:
             post = Post.objects.get(id=post_id)
-            comments = Comment.objects.filter(post=post).select_related('author')
+            comments = Comment.objects.filter(post=post).select_related('author').prefetch_related('liked_by')
             if not comments:
                 print(f"No comments found for post ID {post_id}.")
                 return
@@ -709,7 +711,7 @@ def fetch_comment_data(post_id=None, author_username=None):
     elif author_username:
         try:
             author = User.objects.get(username=author_username)
-            comments = Comment.objects.filter(author=author).select_related('post')
+            comments = Comment.objects.filter(author=author).select_related('post').prefetch_related('liked_by')
             if not comments:
                 print(f"No comments found by '{author_username}'.")
                 return
@@ -719,13 +721,13 @@ def fetch_comment_data(post_id=None, author_username=None):
         except User.DoesNotExist:
             print(f"Author '{author_username}' not found.")
     else:
-        comments = Comment.objects.all().select_related('author', 'post')
+        comments = Comment.objects.all().select_related('author', 'post').prefetch_related('liked_by')
         if not comments:
             print("No comments found.")
             return
         print("All comments:")
         for comment in comments:
-            print(f"  - By {comment.author.username} on '{comment.post.caption[:20]}...': '{comment.body}'")
+            print(f"  - By {comment.author.username} on '{comment.post.caption[:20]}...': '{comment.body}' (Likes: {comment.likes})")
 
 def fetch_study_group_data(group_id=None, host_username=None, topic=None, active_only=False):
     """
