@@ -20,10 +20,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'ai_features',
+    'dof3a_base',
     'djoser',
     'core',
-    'dof3a_base',
-    'ai_features',
 ]
 
 

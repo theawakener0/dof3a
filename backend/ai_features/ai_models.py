@@ -1,7 +1,7 @@
 from langchain_google_genai import GoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-import fetchdb
+from .fetchdb import get_user_context, get_comprehensive_data
 from typing import Dict, Any, Optional, List
 import dotenv
 import os
@@ -103,7 +103,7 @@ def chatmodel(user_input: str, user_id: str, conversation_context: Optional[str]
         # Fetch user context from database
         user_context = ""
         try:
-            user_context = fetchdb.get_user_context(user_id)
+            user_context = get_user_context(user_id)
             logger.info(f"Successfully retrieved user context for user {user_id}")
         except Exception as e:
             logger.warning(f"Failed to fetch user context for user {user_id}: {e}")
@@ -255,7 +255,7 @@ def generate_knockout_questions(subject: str, grade_level: str, difficulty: str 
         user_performance_context = ""
         if user_id:
             try:
-                user_data = fetchdb.get_comprehensive_data(user_id)
+                user_data = get_comprehensive_data(user_id)
                 if user_data and user_data.get('student_profile'):
                     student_profile = user_data['student_profile']
                     user_performance_context = f"""
@@ -593,8 +593,8 @@ def generate_study_recommendations(user_id: int, subject: Optional[str] = None) 
         
         # Fetch comprehensive user data
         try:
-            user_data = fetchdb.get_comprehensive_data(user_id)
-            user_context = fetchdb.get_user_context(user_id)
+            user_data = get_comprehensive_data(user_id)
+            user_context = get_user_context(user_id)
         except Exception as e:
             logger.error(f"Failed to fetch user data for recommendations: {e}")
             return {
