@@ -7,16 +7,16 @@ class ChatRequestSerializer(serializers.Serializer):
     conversation_context = serializers.CharField(max_length=10000, required=False, allow_blank=True)
 
 
-class QuestionGenerationSerializer(serializers.Serializer):
-    """Serializer for question generation requests"""
-    subject = serializers.CharField(max_length=100, required=True)
-    grade_level = serializers.CharField(max_length=50, required=True)
-    difficulty = serializers.ChoiceField(
-        choices=['easy', 'medium', 'hard'],
-        default='medium',
-        required=False
-    )
-    num_questions = serializers.IntegerField(min_value=1, max_value=20, default=5, required=False)
+# class QuestionGenerationSerializer(serializers.Serializer):
+#     """Serializer for question generation requests"""
+#     subject = serializers.CharField(max_length=100, required=True)
+#     grade_level = serializers.CharField(max_length=50, required=True)
+#     difficulty = serializers.ChoiceField(
+#         choices=['easy', 'medium', 'hard'],
+#         default='medium',
+#         required=False
+#     )
+#     num_questions = serializers.IntegerField(min_value=1, max_value=20, default=5, required=False)
 
 
 class StudyRecommendationSerializer(serializers.Serializer):

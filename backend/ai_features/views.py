@@ -3,12 +3,11 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
-from .serializers import ChatRequestSerializer, QuestionGenerationSerializer, StudyRecommendationSerializer
+from .serializers import ChatRequestSerializer, StudyRecommendationSerializer
 from .ai_models import chatmodel, generate_knockout_questions, generate_study_recommendations
 import logging
 
 logger = logging.getLogger(__name__)
-
 
 class ChatAPIView(APIView):
     """API endpoint for AI chat functionality"""
@@ -41,39 +40,39 @@ class ChatAPIView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class QuestionGenerationAPIView(APIView):
-    """API endpoint for generating quiz questions"""
-    permission_classes = [IsAuthenticated]
+# class QuestionGenerationAPIView(APIView):
+#     """API endpoint for generating quiz questions"""
+#     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        serializer = QuestionGenerationSerializer(data=request.data)
-        if serializer.is_valid():
-            try:
-                subject = serializer.validated_data['subject']
-                grade_level = serializer.validated_data['grade_level']
-                difficulty = serializer.validated_data.get('difficulty', 'medium')
-                num_questions = serializer.validated_data.get('num_questions', 5)
-                user_id = request.user.id
+#     def post(self, request):
+#         serializer = QuestionGenerationSerializer(data=request.data)
+#         if serializer.is_valid():
+#             try:
+#                 subject = serializer.validated_data['subject']
+#                 grade_level = serializer.validated_data['grade_level']
+#                 difficulty = serializer.validated_data.get('difficulty', 'medium')
+#                 num_questions = serializer.validated_data.get('num_questions', 5)
+#                 user_id = request.user.id
                 
-                # Call the AI question generation model
-                result = generate_knockout_questions(
-                    subject=subject,
-                    grade_level=grade_level,
-                    difficulty=difficulty,
-                    num_questions=num_questions,
-                    user_id=user_id
-                )
+#                 # Call the AI question generation model
+#                 result = generate_knockout_questions(
+#                     subject=subject,
+#                     grade_level=grade_level,
+#                     difficulty=difficulty,
+#                     num_questions=num_questions,
+#                     user_id=user_id
+#                 )
                 
-                return Response(result, status=status.HTTP_200_OK)
+#                 return Response(result, status=status.HTTP_200_OK)
                 
-            except Exception as e:
-                logger.error(f"Error in question generation API: {str(e)}")
-                return Response(
-                    {'error': 'Failed to generate questions', 'details': str(e)},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#             except Exception as e:
+#                 logger.error(f"Error in question generation API: {str(e)}")
+#                 return Response(
+#                     {'error': 'Failed to generate questions', 'details': str(e)},
+#                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
+#                 )
+#         else:
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class StudyRecommendationAPIView(APIView):

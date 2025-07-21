@@ -90,6 +90,10 @@ urllib3 = "==2.5.0"
 validators = "==0.35.0"
 websockets = "==15.0.1"
 zstandard = "==0.23.0"
+django-debug-toolbar = "*"
+djoser = "*"
+drf-nested-routers = "*"
+langchain-google-genai = "*"
 
 [dev-packages]
 
