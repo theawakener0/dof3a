@@ -23,11 +23,25 @@ class Student(models.Model):
         (SENIOR_THREE, 'Senior 3'),
     ]
 
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student')
     score = models.PositiveIntegerField()
     grade = models.CharField(max_length=50, choices=STUDENT_GRADE, default=OPTION_SELECT)
+    friends = models.ManyToManyField('self', blank=True)
 
-# models.py
+    def __str__(self) -> str:
+        return f'{self.user.username}'
+
+
+class FriendRequest(models.Model):
+    from_student = models.ForeignKey(
+        Student, related_name='sent_requests', on_delete=models.CASCADE)
+    to_student = models.ForeignKey(
+        Student, related_name='received_requests', on_delete=models.CASCADE)
+    is_accepted = models.BooleanField(default=False)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('from_student', 'to_student')
 
 class Post(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)

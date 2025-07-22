@@ -11,3 +11,8 @@ class StudentAdmin(admin.ModelAdmin):
 class PostAdmin(admin.ModelAdmin):
     list_display = ['caption', 'description', 'likes']
     list_editable = ['likes']
+
+@admin.register(models.FriendRequest)
+class PostAdmin(admin.ModelAdmin):
+    list_display = ['from_student', 'to_student', 'is_accepted', 'timestamp']
+    list_editable = ['is_accepted']
