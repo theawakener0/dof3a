@@ -1,9 +1,8 @@
 from rest_framework import serializers
-from .models import Student, Post, Comment
+from .models import Student, Post, Comment, FriendRequest
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
-
 
 class SimpleUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -59,3 +58,17 @@ class CommentSerializer(serializers.ModelSerializer):
         validated_data['likes'] = 0
 
         return super().create(validated_data)
+
+
+class StudentUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['username', 'email']
+
+
+class FriendRequestSerializer(serializers.ModelSerializer):
+    from_student = StudentUserSerializer(source='from_student.user', read_only=True)
+
+    class Meta:
+        model = FriendRequest
+        fields = ['id', 'from_student', 'timestamp']
