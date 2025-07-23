@@ -9,6 +9,22 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class TestAPIView(APIView):
+    """Simple test endpoint to verify the API is working"""
+    permission_classes = []  # No authentication required for testing
+    
+    def get(self, request):
+        return Response({
+            'message': 'AI Features API is working!',
+            'available_endpoints': {
+                'chat': '/api/ai/chat/ (POST, requires authentication)',
+                'recommendations': '/api/ai/recommendations/ (POST, requires authentication)',
+                'test': '/api/ai/test/ (GET, no authentication)'
+            },
+            'timestamp': '2025-07-22',
+            'status': 'active'
+        }, status=status.HTTP_200_OK)
+
 class ChatAPIView(APIView):
     """API endpoint for AI chat functionality"""
     permission_classes = [IsAuthenticated]

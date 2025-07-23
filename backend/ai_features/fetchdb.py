@@ -2,7 +2,6 @@ import os
 import sys
 import django
 import logging
-import types
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, asdict
@@ -12,36 +11,15 @@ from pathlib import Path
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Set up Django environment with minimal configuration
-BASE_DIR = Path(__file__).resolve().parent.parent / "src" / "backend"
-sys.path.append(str(BASE_DIR))  # Add Django project to Python path
+# Add the backend directory to Python path so Django can find the dof3a module
+backend_dir = Path(__file__).parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
 
-# Configure Django settings manually for minimal setup
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'fetchdb_settings')
+# Use the existing Django settings instead of creating our own
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dof3a.settings.development')
 
-# Create minimal Django settings
-import types
-settings_module = types.ModuleType('fetchdb_settings')
-settings_module.SECRET_KEY = 'temporary-key-for-fetchdb'
-settings_module.DEBUG = True
-settings_module.DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-settings_module.INSTALLED_APPS = [
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'core',
-    'dof3a_base',
-]
-settings_module.USE_TZ = True
-settings_module.AUTH_USER_MODEL = 'core.User'
-
-# Add to sys.modules so Django can find it
-sys.modules['fetchdb_settings'] = settings_module
-
+# Setup Django
 django.setup()
 # Import Django models after setup
 from django.contrib.auth import get_user_model
