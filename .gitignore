@@ -13,3 +13,4 @@
 
 # Backend AI features environment files
 backend/ai_features/.env
+settings/development

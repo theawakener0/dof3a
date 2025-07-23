@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dof3a – Intelligent Educational Platform</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3A86FF;
+            --primary-dark: #2563eb;
+            --secondary: #8b5cf6;
+            --dark-bg: #0f172a;
+            --darker-bg: #0b1120;
+            --card-bg: #1e293b;
+            --text-light: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent: #60a5fa;
+            --success: #10b981;
+            --gradient: var(--primary);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        a, a:visited, a:hover, a:focus {
+            text-decoration: none !important;
+        }
+
+        body {
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-light);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--darker-bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--secondary);
+        }
+
+        /* Navbar */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 5%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(10px);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(94, 234, 212, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--text-light);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            color: var(--primary);
+            font-size: 1.8rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-link:hover {
+            color: var(--text-light);
+        }
+
+        .nav-cta {
+            background: var(--primary);
+            color: white;
+            padding: 0.6rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .nav-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(99, 102, 241, 0.4);
+        }
+
+        /* Hero Section */
+        .hero {
+            background: var(--primary);
+            padding: 9rem 5% 6rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0,0 C50,100 50,0 100,100 L100,0 Z" fill="rgba(255,255,255,0.05)"/></svg>');
+            background-size: cover;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            letter-spacing: -0.5px;
+            font-weight: 800;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero p {
+            font-size: 1.4rem;
+            max-width: 700px;
+            margin: 0 auto 2.5rem;
+            position: relative;
+            z-index: 2;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* API Button */
+        .api-btn-container {
+            text-align: center;
+            margin: -2rem auto 3rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        .api-btn {
+            display: inline-block;
+            background: var(--primary);
+            color: #fff;
+            font-weight: 600;
+            font-size: 1.1rem;
+            padding: 1rem 2.5rem;
+            border-radius: 50px;
+            text-decoration: none;
+            box-shadow: 0 4px 25px rgba(99, 102, 241, 0.35);
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .api-btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -60%;
+            width: 20px;
+            height: 200%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(25deg);
+            transition: all 0.5s;
+        }
+
+        .api-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 30px rgba(99, 102, 241, 0.5);
+        }
+
+        .api-btn:hover::after {
+            left: 120%;
+        }
+
+        /* Features Section */
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 2rem;
+            margin: 4rem auto;
+            padding: 0 5%;
+            max-width: 1400px;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.2rem;
+            margin: 5rem 0 1rem;
+            position: relative;
+            font-weight: 700;
+        }
+
+        .section-title::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 4px;
+            background: var(--primary);
+            margin: 0.5rem auto;
+            border-radius: 2px;
+        }
+
+        .feature-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2.5rem 2rem;
+            flex: 1 1 320px;
+            max-width: 380px;
+            text-align: left;
+            transition: all 0.4s;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--primary);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.4s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-card h3 {
+            margin-top: 0;
+            color: var(--text-light);
+            font-size: 1.4rem;
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .feature-card h3 i {
+            background: var(--primary);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: 1.2rem;
+        }
+
+        .feature-card p {
+            margin-bottom: 0;
+            color: var(--text-muted);
+            font-size: 1.05rem;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 5rem;
+            padding: 4rem 5% 3rem;
+            background: var(--darker-bg);
+            text-align: center;
+            font-size: 1rem;
+            position: relative;
+        }
+
+        .footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--primary);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer p {
+            margin: 1rem 0;
+            color: var(--text-muted);
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .social-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--card-bg);
+            color: var(--text-light);
+            font-size: 1.2rem;
+            transition: all 0.3s;
+        }
+
+        .social-link:hover {
+            background: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        .copyright {
+            margin-top: 2rem;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Particles effect */
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Responsive design */
+        @media (max-width: 900px) {
+            .navbar {
+                padding: 1.2rem 5%;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .hero h1 {
+                font-size: 2.8rem;
+            }
+
+            .hero p {
+                font-size: 1.2rem;
+            }
+
+            .features {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .feature-card {
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .hero {
+                padding: 7rem 5% 4rem;
+            }
+
+            .hero h1 {
+                font-size: 2.3rem;
+            }
+
+            .hero p {
+                font-size: 1.1rem;
+            }
+
+            .section-title {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a href="#" class="logo">
+            <i class="fas fa-graduation-cap logo-icon"></i>
+            <span>dof3a</span>
+        </a>
+        <div class="nav-links">
+            <a href="#" class="nav-link">Features</a>
+            <a href="#" class="nav-link">Subjects</a>
+            <a href="#" class="nav-link">About</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="particles" id="particles"></div>
+        <h1>Welcome to dof3a</h1>
+        <p>
+            The intelligent educational platform for Egyptian students.<br>
+            <strong>AI-powered tutoring, study groups, and interactive learning experiences.</strong>
+        </p>
+    </section>
+
+    <!-- API Button -->
+    <div class="api-btn-container">
+        <a href="/dof3a-api/" class="api-btn">
+            <i class="fas fa-rocket"></i> Explore our API
+        </a>
+    </div>
+
+    <!-- Features Section -->
+    <h2 class="section-title">Our Powerful Features</h2>
+    <div class="features">
+        <div class="feature-card">
+            <h3><i class="fas fa-robot"></i> AI Personal Tutor</h3>
+            <p>
+                Get instant, personalized help with homework and exam prep. Our smart chat assistant understands the
+                Egyptian curriculum and adapts to your grade and performance.
+            </p>
+        </div>
+        <div class="feature-card">
+            <h3><i class="fas fa-gamepad"></i> Knockout Games & Quizzes</h3>
+            <p>
+                Challenge yourself or friends with AI-generated, curriculum-aligned multiple-choice questions. Compete
+                in 1v1 knockout games and track your progress!
+            </p>
+        </div>
+        <div class="feature-card">
+            <h3><i class="fas fa-users"></i> Study Groups</h3>
+            <p>
+                Create or join study groups, schedule sessions, and collaborate on topics. Learn together, share
+                resources, and support each other.
+            </p>
+        </div>
+        <div class="feature-card">
+            <h3><i class="fas fa-lightbulb"></i> Personalized Study Recommendations</h3>
+            <p>
+                Receive actionable study tips and focus areas based on your activity, grade, and performance. Stay
+                motivated and on track!
+            </p>
+        </div>
+        <div class="feature-card">
+            <h3><i class="fas fa-comments"></i> Social Learning</h3>
+            <p>
+                Post questions, comment, like, and connect with friends. Build your learning network in a safe,
+                supportive community.
+            </p>
+        </div>
+        <div class="feature-card">
+            <h3><i class="fas fa-book"></i> Curriculum-Aligned</h3>
+            <p>
+                All content is tailored for the Egyptian educational system, supporting Math, Science, Arabic, English,
+                and more, from Middle 1 to Senior 3.
+            </p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="social-links">
+                <a href="#" class="social-link"><i class="fab fa-facebook-f"></i></a>
+                <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+                <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
+                <a href="#" class="social-link"><i class="fab fa-linkedin-in"></i></a>
+                <a href="#" class="social-link"><i class="fab fa-youtube"></i></a>
+            </div>
+            <p>&copy; 2025 dof3a. Empowering Egyptian students with intelligent learning.</p>
+            <p class="copyright">Designed with ❤️ for the future of education in Egypt</p>
+        </div>
+    </footer>
+
+    <script>
+        // Create particles for hero section
+        document.addEventListener('DOMContentLoaded', function () {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 30;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+
+                // Random properties
+                const size = Math.random() * 6 + 2;
+                const posX = Math.random() * 100;
+                const posY = Math.random() * 100;
+                const animationDuration = Math.random() * 10 + 10;
+                const animationDelay = Math.random() * 5;
+                const opacity = Math.random() * 0.4 + 0.1;
+
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${posX}%`;
+                particle.style.top = `${posY}%`;
+                particle.style.opacity = opacity;
+                particle.style.animation = `float ${animationDuration}s ease-in-out ${animationDelay}s infinite`;
+
+                particlesContainer.appendChild(particle);
+            }
+
+            // Add floating animation to CSS
+            const style = document.createElement('style');
+            style.innerHTML = `
+                @keyframes float {
+                    0%, 100% { transform: translate(0, 0); }
+                    25% { transform: translate(-5px, -5px); }
+                    50% { transform: translate(5px, 5px); }
+                    75% { transform: translate(-3px, 3px); }
+                }
+            `;
+            document.head.appendChild(style);
+        });
+    </script>
+</body>
+
+</html>

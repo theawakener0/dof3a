@@ -94,6 +94,8 @@ django-debug-toolbar = "*"
 djoser = "*"
 drf-nested-routers = "*"
 langchain-google-genai = "*"
+mysqlclient = "*"
+mysql = "*"
 
 [dev-packages]
 

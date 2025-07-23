@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Student, Post, Comment, FriendRequest
+from .models import Student, Post, Comment, FriendRequest, StudyGroup
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -72,3 +72,8 @@ class FriendRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = FriendRequest
         fields = ['id', 'from_student', 'timestamp']
+
+class StudyGroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudyGroup
+        fields = ['id', 'host', 'topic', 'location', 'scheduled_time', 'created_at']
