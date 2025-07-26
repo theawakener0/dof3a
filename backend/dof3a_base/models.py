@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+import uuid
 
 User = get_user_model()
 
@@ -63,6 +64,7 @@ class Comment(models.Model):
         return self.liked_by.count()
 
 class StudyGroup(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     host = models.ForeignKey(User, on_delete=models.CASCADE, related_name='hosted_groups')
     topic = models.CharField(max_length=100)
     location = models.CharField(max_length=255)

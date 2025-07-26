@@ -2,8 +2,8 @@ from django.shortcuts import render
 from rest_framework import status, permissions, mixins, viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .serializers import StudentSerializer, PostSerializer, CreatePostSerialier, CommentSerializer, FriendRequestSerializer
-from .models import Student, Post, Comment, FriendRequest
+from .serializers import StudentSerializer, PostSerializer, CreatePostSerialier, CommentSerializer, FriendRequestSerializer, StudyGroupSerializer
+from .models import Student, Post, Comment, FriendRequest, StudyGroup
 from .permissions.comment_perms import IsCommentAuthor
 
 class StudentViewSet(viewsets.ReadOnlyModelViewSet):
@@ -141,3 +141,8 @@ class FriendRequestViewSet(viewsets.ModelViewSet):
 
         except FriendRequest.DoesNotExist:
             return Response({'error': 'Friend request not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+class StudyGroupViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, mixins.DestroyModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = StudyGroupSerializer
+    queryset = StudyGroup.objects.all()
